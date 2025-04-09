@@ -18,7 +18,7 @@ void parse_input(char *input, char **args) {
 }
 
 void execute_command(char **args) {
-    pid_t pid, wpid;
+    pid_t pid;
     int status;
 
     pid = fork();
@@ -34,12 +34,12 @@ void execute_command(char **args) {
     } else {
         // Parent process
         do {
-            wpid = waitpid(pid, &status, WUNTRACED);
+            waitpid(pid, &status, WUNTRACED);
         } while (!WIFEXITED(status) && !WIFSIGNALED(status));
     }
 }
 
-int main() {
+int main(void) {
     char *args[ARG_SIZE];
     char input[BUFFER_SIZE];
 

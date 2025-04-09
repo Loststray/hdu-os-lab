@@ -12,7 +12,7 @@
 
 #define BUF_MAX_SIZE 8192 // 定义缓冲区的最大大小
 
-int main(int argc, char **argv) {
+int main(void) {
     int pipefd[2], pid = 0, i = 0;
     int flag = 0;           // 标志变量，用于控制循环
     ssize_t n;              // 记录读写的字节数

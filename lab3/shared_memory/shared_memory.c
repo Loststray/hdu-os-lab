@@ -9,7 +9,7 @@
 
 #define SHM_SIZE 1024 // 共享内存大小
 
-int main() {
+int main(void) {
     key_t key;
     int shmid;
     char *shared_memory;

@@ -9,8 +9,7 @@ add_subdirectory("lab5")
 
 add_custom_target(
     format
-    COMMAND ${CMAKE_COMMAND} -E echo "formatting\n"
-    find ../ -path ../build -prune  -o -type f -name "*.c" -exec clang-format -i {} "\;"
+    find ../ -path ../build -prune -o -type f -name "*.c" -o -name "*.cpp" -o -name "*.hpp" -exec clang-format -i {} "\;"
 )
 add_custom_target(
     run_shell

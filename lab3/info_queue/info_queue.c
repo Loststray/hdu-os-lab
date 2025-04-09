@@ -15,7 +15,7 @@ struct message {
     char msg_text[MSG_SIZE]; // 消息内容
 };
 
-int main() {
+int main(void) {
     key_t key;
     int msgid;
     pid_t pid1, pid2, pid3;
