@@ -9,7 +9,11 @@ add_subdirectory("lab5")
 
 add_custom_target(
     format
-    find ../ -path ../build -prune -o -type f -name "*.c" -o -name "*.cpp" -o -name "*.hpp" -exec clang-format -i {} "\;"
+    # find ../ -path ../build -prune -o -type f -name "*.c" -o -name "*.cpp" -o -name "*.hpp" -exec clang-format -i {} "\;"
+    clang-format -i ../lab3/*.c &&
+    clang-format -i ../lab3/*/*.c &&
+    clang-format -i ../lab5/*.cpp &&
+    clang-format -i ../lab5/*.hpp
 )
 add_custom_target(
     run_shell
