@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
-project("HDU OS LAB3")
+project("HDU OS LAB3" C)
 
 set(CMAKE_C_EXTENSIONS OFF)
-set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Werror")
+set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wshadow -Wconversion")
 
 
 add_executable(myshell ${CMAKE_SOURCE_DIR}/lab3/myshell.c)

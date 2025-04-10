@@ -1,89 +1,167 @@
+#include <fcntl.h>
+#include <pthread.h>
+#include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <wait.h>
 
-#define MSG_SIZE 128 // 消息内容的最大长度
+#define MAX_MSG_SIZE 256
 
-// 定义消息结构
-struct message {
-    long msg_type;           // 消息类型
-    char msg_text[MSG_SIZE]; // 消息内容
-};
+// 消息结构体
+typedef struct msg_st {
+    long msg_type; // 消息类型，决定是哪个线程发送的消息
+    char msg_text[MAX_MSG_SIZE]; // 消息内容
+} msg_st;
+
+int msg_id;
+sem_t mq_is_empty, mq_has_msg, sender1_end, sender2_end;
+
+// 发送线程1
+void *sender1(void *args) {
+    if (args != NULL) {
+        return NULL;
+    }
+    char msg[MAX_MSG_SIZE];
+    msg_st message;
+    message.msg_type = 1; // sender1 的消息类型为 1
+
+    while (1) {
+        sem_wait(&mq_is_empty);
+        printf("Sender1: Enter message (or 'exit' to quit): ");
+        scanf("%s", msg);
+        msg[strcspn(msg, "\n")] = '\0'; // 去掉末尾的换行符
+
+        if (strcmp(msg, "exit") == 0) {
+            // 发送结束消息并退出
+            strcpy(message.msg_text, "end1");
+            msgsnd(msg_id, &message, sizeof(message), 0);
+            printf("Sender1: Sent 'end1' to receiver\n");
+            sem_post(&mq_has_msg);
+            break;
+        }
+
+        // 将消息内容放入结构体并发送
+        strcpy(message.msg_text, msg);
+        msgsnd(msg_id, &message, sizeof(message), 0);
+        sem_post(&mq_has_msg);
+    }
+    sem_wait(&sender1_end);
+    printf("sender1: [receiver]: sender1 exit\n");
+    return NULL;
+}
+
+// 发送线程2
+void *sender2(void *args) {
+    if (args != NULL) {
+        return NULL;
+    }
+    char msg[MAX_MSG_SIZE];
+    msg_st message;
+    message.msg_type = 2; // sender2 的消息类型为 2
+
+    while (1) {
+        sem_wait(&mq_is_empty);
+        printf("Sender2: Enter message (or 'exit' to quit): ");
+        scanf("%s", msg);
+        msg[strcspn(msg, "\n")] = '\0'; // 去掉末尾的换行符
+
+        if (strcmp(msg, "exit") == 0) {
+            // 发送结束消息并退出
+            strcpy(message.msg_text, "end2");
+            msgsnd(msg_id, &message, sizeof(message), 0);
+            printf("Sender2: Sent 'end2' to receiver\n");
+            sem_post(&mq_has_msg);
+            break;
+        }
+
+        // 将消息内容放入结构体并发送
+        strcpy(message.msg_text, msg);
+        msgsnd(msg_id, &message, sizeof(message), 0);
+        sem_post(&mq_has_msg);
+    }
+    sem_wait(&sender2_end);
+    printf("sender1: [receiver]: sender2 exit");
+    return NULL;
+}
+
+// 接收线程
+void *receiver(void *args) {
+    if (args != NULL) {
+        return NULL;
+    }
+    int alive_task = 2;
+    msg_st message;
+    while (alive_task) {
+        sem_wait(&mq_has_msg);
+        ssize_t bytes_read =
+            msgrcv(msg_id, (char *)&message, sizeof(message), 0, 0);
+        sem_post(&mq_is_empty);
+        if (bytes_read >= 0) {
+            // 接收到的消息类型
+            if (message.msg_type == 1) {
+                printf("Receiver: [Sender1]: %s\n", message.msg_text);
+                if (strcmp(message.msg_text, "end1") == 0) {
+                    printf("Receiver: Received 'end1' from Sender1. Ending.\n");
+                    sem_post(&sender1_end);
+                    --alive_task;
+                }
+            } else if (message.msg_type == 2) {
+                printf("Receiver: [Sender2]: %s\n", message.msg_text);
+                if (strcmp(message.msg_text, "end2") == 0) {
+                    printf("Receiver: Received 'end2' from Sender2. Ending.\n");
+                    sem_post(&sender2_end);
+                    --alive_task;
+                }
+            }
+        } else {
+            perror("mq_receive failed");
+        }
+    }
+
+    return NULL;
+}
 
 int main(void) {
-    key_t key;
-    int msgid;
-    pid_t pid1, pid2, pid3;
+    pthread_t t1, t2, t3;
 
-    // 创建消息队列的唯一键
-    key = ftok("progfile", 65);
-    if (key == -1) {
-        perror("ftok");
-        exit(EXIT_FAILURE);
+    key_t key = ftok("/home/fiatiustitia/hdu-os-lab/lab3/info_queue/yaju_senpai", 114514);
+    msg_id = msgget(key, IPC_CREAT | 0666);
+
+    if (msg_id == -1) {
+        printf("msgget error\n");
+        exit(1);
     }
 
-    // 创建消息队列
-    msgid = msgget(key, 0666 | IPC_CREAT);
-    if (msgid == -1) {
-        perror("msgget");
-        exit(EXIT_FAILURE);
+    sem_init(&mq_is_empty, 0, 1);
+    sem_init(&mq_has_msg, 0, 0);
+    sem_init(&sender1_end, 0, 0);
+    sem_init(&sender2_end, 0, 0);
+
+    // 创建三个线程
+    if (pthread_create(&t1, NULL, sender1, NULL) != 0) {
+        perror("pthread_create(sender1) failed");
+        return 1;
     }
-
-    // 创建第一个子进程
-    pid1 = fork();
-    if (pid1 == 0) {
-        // 子进程 1：发送消息到队列
-        struct message msg;
-        msg.msg_type = 1; // 消息类型为 1
-        strcpy(msg.msg_text, "Hello from child 1");
-        msgsnd(msgid, &msg, sizeof(msg.msg_text), 0);
-        printf("Child 1 sent: %s\n", msg.msg_text);
-        exit(0);
+    if (pthread_create(&t2, NULL, sender2, NULL) != 0) {
+        perror("pthread_create(sender2) failed");
+        return 1;
     }
-
-    // 创建第二个子进程
-    pid2 = fork();
-    if (pid2 == 0) {
-        // 子进程 2：发送消息到队列
-        struct message msg;
-        msg.msg_type = 2; // 消息类型为 2
-        strcpy(msg.msg_text, "Hello from child 2");
-        msgsnd(msgid, &msg, sizeof(msg.msg_text), 0);
-        printf("Child 2 sent: %s\n", msg.msg_text);
-        exit(0);
+    if (pthread_create(&t3, NULL, receiver, NULL) != 0) {
+        perror("pthread_create(receiver) failed");
+        return 1;
     }
+    // 等待线程结束
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+    pthread_join(t3, NULL);
 
-    // 创建第三个子进程
-    pid3 = fork();
-    if (pid3 == 0) {
-        // 子进程 3：发送消息到队列
-        struct message msg;
-        msg.msg_type = 3; // 消息类型为 3
-        strcpy(msg.msg_text, "Hello from child 3");
-        msgsnd(msgid, &msg, sizeof(msg.msg_text), 0);
-        printf("Child 3 sent: %s\n", msg.msg_text);
-        exit(0);
-    }
-
-    // 主进程：接收消息
-    for (int i = 0; i < 3; i++) {
-        struct message msg;
-        msgrcv(msgid, &msg, sizeof(msg.msg_text), 0, 0); // 接收任意类型的消息
-        printf("Parent received: %s\n", msg.msg_text);
-    }
-
-    // 等待子进程结束
-    wait(NULL);
-    wait(NULL);
-    wait(NULL);
-
-    // 删除消息队列
-    msgctl(msgid, IPC_RMID, NULL);
+    // 关闭并删除消息队列
+    msgctl(msg_id, IPC_RMID, 0);
 
     return 0;
 }
