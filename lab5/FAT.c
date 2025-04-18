@@ -1,55 +1,28 @@
-#include <sys/wait.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
 #include <fs.c>
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <time.h>
+#include <unistd.h>
 
 /** List of builtin commands, followed by their corresponding functions. */
-char *builtin_str[] = {
-        "format",
-        "cd",
-        "mkdir",
-        "rmdir",
-        "ls",
-        "create",
-        "rm",
-        "write",
-        "read",
-        "exit",
-        "open",
-        "close",
-        "pwd"
-};
+char *builtin_str[] = {"format", "cd",    "mkdir", "rmdir", "ls",
+                       "create", "rm",    "write", "read",  "exit",
+                       "open",   "close", "pwd"};
 
 int (*builtin_func[])(char **) = {
-        &my_format,
-        &my_cd,
-        &my_mkdir,
-        &my_rmdir,
-        &my_ls,
-        &my_create,
-        &my_rm,
-        &my_write,
-        &my_read,
-        &my_exit_sys,
-        &my_open,
-        &my_close,
-        &my_pwd
-};
+    &my_format, &my_cd,    &my_mkdir, &my_rmdir, &my_ls,
+    &my_create, &my_rm,    &my_write, &my_read,  &my_exit_sys,
+    &my_open,   &my_close, &my_pwd};
 
-int csh_num_builtins(void) {
-    return sizeof(builtin_str) / sizeof(char*);
-}
+int csh_num_builtins(void) { return sizeof(builtin_str) / sizeof(char *); }
 /*
  * @brief Launch a program and wait for it to terminate
  * @param args Null terminated list of arguments.
  * @return Always return 1, to continue executing.
  */
-int csh_launch(char **args)
-{
+int csh_launch(char **args) {
     pid_t pid;
     int status;
 
@@ -78,8 +51,7 @@ int csh_launch(char **args)
  * @param args Null terminated list of arguments.
  * @return 1 if the shell should continue running, 0 if it should terminate.
  */
-int csh_execute(char **args)
-{
+int csh_execute(char **args) {
     int i;
     if (args[0] == NULL) {
         // An empty command was entered
@@ -99,8 +71,7 @@ int csh_execute(char **args)
  * @brief Read a line of input from stdin.
  * @return The line from stdin.
  */
-char *csh_read_line(void)
-{
+char *csh_read_line(void) {
     char *line = NULL;
     size_t bufsize = 0;
     getline(&line, &bufsize, stdin);
@@ -114,10 +85,9 @@ char *csh_read_line(void)
  * @param line The line.
  * @return Null-terminated array of tokens.
  */
-char **csh_split_line(char *line)
-{
+char **csh_split_line(char *line) {
     size_t bufsize = CSH_TOK_BUFSIZE, position = 0;
-    char **tokens = malloc(bufsize * sizeof(char*));
+    char **tokens = malloc(bufsize * sizeof(char *));
     char *token;
 
     if (!tokens) {
@@ -132,7 +102,7 @@ char **csh_split_line(char *line)
 
         if (position >= bufsize) {
             bufsize += CSH_TOK_BUFSIZE;
-            tokens = realloc(tokens, bufsize * sizeof(char*));
+            tokens = realloc(tokens, bufsize * sizeof(char *));
             if (!tokens) {
                 fprintf(stderr, "csh: allocation error\n");
                 exit(EXIT_FAILURE);
@@ -148,8 +118,7 @@ char **csh_split_line(char *line)
 /*
  * @brief Loop getting input and execting it.
  */
-void csh_loop(void)
-{
+void csh_loop(void) {
     char *line;
     char **args;
     int status;
@@ -172,8 +141,7 @@ void csh_loop(void)
  * @param argv Argument vector.
  * @return status code.
  */
-int main(void)
-{
+int main(void) {
     start_sys();
     csh_loop();
 
