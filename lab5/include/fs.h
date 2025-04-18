@@ -1,9 +1,9 @@
+#ifndef OPERATOR_SYSTEM_EXP4_SIMPLEFS_H
+#define OPERATOR_SYSTEM_EXP4_SIMPLEFS_H
 #include <stdio.h>
 #include <time.h>
 #include <stdint.h>
 
-#ifndef OPERATOR_SYSTEM_EXP4_SIMPLEFS_H
-#define OPERATOR_SYSTEM_EXP4_SIMPLEFS_H
 #define BLOCK_SIZE      1024
 #define BLOCK_NUM       1024
 #define DISK_SIZE       1048576 //1MB
@@ -121,11 +121,11 @@ void do_close(int fd);
 
 int my_write(char **args);
 
-int do_write(int fd, char *content, size_t len, int wstyle);
+size_t do_write(size_t fd, char *content, size_t len, int wstyle);
 
 int my_read(char **args);
 
-int do_read(int fd, int len, char *text);
+int do_read(size_t fd, size_t len, char *text);
 
 int my_exit_sys(char **args);
 
@@ -151,7 +151,7 @@ fcb *find_fcb(const char *path);
 
 fcb *find_fcb_r(char *token, int root);
 
-void init_folder(int first, int second);
+void init_folder(ushort first, ushort second);
 
 void get_fullname(char *fullname, fcb *fcb1);
 
@@ -159,4 +159,4 @@ char *trans_date(char *sdate, unsigned short date);
 
 char *trans_time(char *stime, unsigned short time);
 
-#endif //OPERATOR_SYSTEM_EXP4_SIMPLEFS_H
+#endif

@@ -1,7 +1,7 @@
 #include "fs.h"
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 
 /* Definition of functions */
@@ -10,7 +10,7 @@
  *
  */
 int start_sys(void) {
-    fs_head = (unsigned char *) malloc(DISK_SIZE);
+    fs_head = (unsigned char *)malloc(DISK_SIZE);
     memset(fs_head, 0, DISK_SIZE);
     FILE *fp;
     int i;
@@ -19,14 +19,15 @@ int start_sys(void) {
         fread(fs_head, DISK_SIZE, 1, fp);
         fclose(fp);
     } else {
-        printf("System is not initialized, now install it and create system file.\n");
+        printf("System is not initialized, now install it and create system "
+               "file.\n");
         printf("Please don't leave program.\n");
         printf("Initialed success!\n");
         do_format();
     }
 
     /**< Init the first openfile entry. */
-    fcb_cpy(&openfile_list[0].open_fcb, ((fcb *) (fs_head + 5 * BLOCK_SIZE)));
+    fcb_cpy(&openfile_list[0].open_fcb, ((fcb *)(fs_head + 5 * BLOCK_SIZE)));
     strcpy(openfile_list[0].dir, ROOT);
     openfile_list[0].count = 0;
     openfile_list[0].fcb_state = 0;
@@ -34,7 +35,7 @@ int start_sys(void) {
     curdir = 0;
 
     /**< Init the other openfile entry. */
-    fcb *empty = (fcb *) malloc(sizeof(fcb));
+    fcb *empty = (fcb *)malloc(sizeof(fcb));
     set_fcb(empty, "\0", "\0", 0, 0, 0, 0);
     for (i = 1; i < MAX_OPENFILE; i++) {
         fcb_cpy(&openfile_list[i].open_fcb, empty);
@@ -46,7 +47,7 @@ int start_sys(void) {
 
     /**< Init global variables. */
     strcpy(current_dir, openfile_list[curdir].dir);
-    start = ((block0 *) fs_head)->start_block;
+    start = ((block0 *)fs_head)->start_block;
     free(empty);
     return 0;
 }
@@ -61,7 +62,8 @@ int my_format(char **args) {
     int i;
 
     /**< Check argument count. */
-    for (i = 0; args[i] != NULL; i++);
+    for (i = 0; args[i] != NULL; i++)
+        ;
     if (i > 2) {
         fprintf(stderr, "format: expected argument to \"format\"\n");
         return 1;
@@ -71,7 +73,7 @@ int my_format(char **args) {
     if (args[1] != NULL) {
         /**< Fill with 0. */
         if (!strcmp(args[1], "-x")) {
-            ptr = (unsigned char *) malloc(DISK_SIZE);
+            ptr = (unsigned char *)malloc(DISK_SIZE);
             memset(ptr, 0, DISK_SIZE);
             fp = fopen(SYS_PATH, "w");
             fwrite(ptr, DISK_SIZE, 1, fp);
@@ -99,11 +101,11 @@ int do_format(void) {
     FILE *fp;
 
     /**< Init the boot block(block0). */
-    block0 *init_block = (block0 *) ptr;
-    strcpy(init_block->information,
-           "Disk Size = 1MB, Block Size = 1KB, Block0 in 0, FAT0/1 in 1/3, Root Directory in 5");
+    block0 *init_block = (block0 *)ptr;
+    strcpy(init_block->information, "Disk Size = 1MB, Block Size = 1KB, Block0 "
+                                    "in 0, FAT0/1 in 1/3, Root Directory in 5");
     init_block->root = 5;
-    init_block->start_block = (unsigned char *) (init_block + BLOCK_SIZE * 7);
+    init_block->start_block = (unsigned char *)(init_block + BLOCK_SIZE * 7);
     ptr += BLOCK_SIZE;
 
     /**< Init FAT0/1. */
@@ -117,7 +119,7 @@ int do_format(void) {
     ptr += BLOCK_SIZE * 4;
 
     /**< 2 blocks to root directory. */
-    fcb *root = (fcb *) ptr;
+    fcb *root = (fcb *)ptr;
     first = get_free(ROOT_BLOCK_NUM);
     set_free(first, ROOT_BLOCK_NUM, 0);
     set_fcb(root, ".", "di", 0, first, BLOCK_SIZE * 2, 1);
@@ -145,11 +147,12 @@ int do_format(void) {
 int my_cd(char **args) {
     int i;
     int fd;
-    char abspath[PATHLENGTH];
+    char abspath[PATHLENGTH] = {0};
     fcb *dir;
 
     /**< Check argument count. */
-    for (i = 0; args[i] != NULL; i++);
+    for (i = 0; args[i] != NULL; i++)
+        ;
     if (i != 2) {
         fprintf(stderr, "cd: expected argument to \"format\"\n");
         return 1;
@@ -221,8 +224,8 @@ int my_pwd(char **args) {
  */
 int my_mkdir(char **args) {
     int i;
-    char path[PATHLENGTH];
-    char parpath[PATHLENGTH], dirname[NAMELENGTH];
+    char path[PATHLENGTH] = {0};
+    char parpath[PATHLENGTH] = {0}, dirname[NAMELENGTH] = {0};
     char *end;
 
     /**< Check argument count. */
@@ -245,11 +248,15 @@ int my_mkdir(char **args) {
         }
 
         if (find_fcb(parpath) == NULL) {
-            fprintf(stderr, "create: cannot create \'%s\': Parent folder not exists\n", parpath);
+            fprintf(stderr,
+                    "create: cannot create \'%s\': Parent folder not exists\n",
+                    parpath);
             continue;
         }
         if (find_fcb(path) != NULL) {
-            fprintf(stderr, "create: cannot create \'%s\': Folder or file exists\n", args[i]);
+            fprintf(stderr,
+                    "create: cannot create \'%s\': Folder or file exists\n",
+                    args[i]);
             continue;
         }
 
@@ -267,8 +274,9 @@ int my_mkdir(char **args) {
  */
 int do_mkdir(const char *parpath, const char *dirname) {
     unsigned short second = get_free(1);
-    int  flag = 0, first = find_fcb(parpath)->first;
-    fcb *dir = (fcb *) (fs_head + BLOCK_SIZE * first);
+    int flag = 0;
+    ushort first = find_fcb(parpath)->first;
+    fcb *dir = (fcb *)(fs_head + BLOCK_SIZE * first);
 
     /**< Check for free fcb. */
     for (size_t i = 0; i < BLOCK_SIZE / sizeof(fcb); i++, dir++) {
@@ -283,7 +291,7 @@ int do_mkdir(const char *parpath, const char *dirname) {
     }
 
     /**< Check for free space. */
-    if (second == (unsigned short) (-1)) {
+    if (second == (unsigned short)(-1)) {
         fprintf(stderr, "mkdir: No more space\n");
         return -1;
     }
@@ -312,7 +320,9 @@ int my_rmdir(char **args) {
     /**< Do remove. */
     for (i = 1; args[i] != NULL; i++) {
         if (!strcmp(args[i], ".") || !strcmp(args[i], "..")) {
-            fprintf(stderr, "rmdir: cannot remove %s: '.' or '..' is read only \n", args[i]);
+            fprintf(stderr,
+                    "rmdir: cannot remove %s: '.' or '..' is read only \n",
+                    args[i]);
             return 1;
         }
 
@@ -323,12 +333,14 @@ int my_rmdir(char **args) {
 
         dir = find_fcb(args[i]);
         if (dir == NULL) {
-            fprintf(stderr, "rmdir: cannot remove %s: No such folder\n", args[i]);
+            fprintf(stderr, "rmdir: cannot remove %s: No such folder\n",
+                    args[i]);
             return 1;
         }
 
         if (dir->attribute == 1) {
-            fprintf(stderr, "rmdir: cannot remove %s: Is a directory\n", args[i]);
+            fprintf(stderr, "rmdir: cannot remove %s: Is a directory\n",
+                    args[i]);
             return 1;
         }
 
@@ -341,7 +353,8 @@ int my_rmdir(char **args) {
             if (!strcmp(dir->filename, openfile_list[j].open_fcb.filename) &&
                 dir->first == openfile_list[j].open_fcb.first) {
                 /**< Folder is open. */
-                fprintf(stderr, "rmdir: cannot remove %s: File is open\n", args[i]);
+                fprintf(stderr, "rmdir: cannot remove %s: File is open\n",
+                        args[i]);
                 return 1;
             }
         }
@@ -358,7 +371,7 @@ void do_rmdir(fcb *dir) {
     unsigned short first = dir->first;
 
     dir->free = 0;
-    dir = (fcb *) (fs_head + BLOCK_SIZE * first);
+    dir = (fcb *)(fs_head + BLOCK_SIZE * first);
     dir->free = 0;
     dir++;
     dir->free = 0;
@@ -368,7 +381,8 @@ void do_rmdir(fcb *dir) {
 
 /**
  * Show all thing in folder.
- * @param args Empty to show current folder. '-l' to show by a long format. 'path' to show a specific folder.
+ * @param args Empty to show current folder. '-l' to show by a long format.
+ * 'path' to show a specific folder.
  * @return Always 1.
  */
 int my_ls(char **args) {
@@ -407,7 +421,9 @@ int my_ls(char **args) {
             if (dir != NULL && dir->attribute == 0) {
                 first = dir->first;
             } else {
-                fprintf(stderr, "ls: cannot access '%s': No such file or directory\n", args[i]);
+                fprintf(stderr,
+                        "ls: cannot access '%s': No such file or directory\n",
+                        args[i]);
                 return 1;
             }
             break;
@@ -427,8 +443,8 @@ int my_ls(char **args) {
 void do_ls(int first, char mode) {
     size_t i, count, length = BLOCK_SIZE;
     char fullname[NAMELENGTH], date[16], time[16];
-    fcb *root = (fcb *) (fs_head + BLOCK_SIZE * first);
-    block0 *init_block = (block0 *) fs_head;
+    fcb *root = (fcb *)(fs_head + BLOCK_SIZE * first);
+    block0 *init_block = (block0 *)fs_head;
     if (first == init_block->root) {
         length = ROOT_BLOCK_NUM * BLOCK_SIZE;
     }
@@ -463,7 +479,8 @@ void do_ls(int first, char mode) {
             trans_date(date, root->date);
             trans_time(time, root->time);
             get_fullname(fullname, root);
-            printf("%d\t%6d\t%6ld\t%s\t%s\t", root->attribute, root->first, root->length, date, time);
+            printf("%d\t%6d\t%6ld\t%s\t%s\t", root->attribute, root->first,
+                   root->length, date, time);
             if (root->attribute == 0) {
                 printf("%s", FOLDER_COLOR);
                 printf("%s\n", fullname);
@@ -484,8 +501,8 @@ void do_ls(int first, char mode) {
  */
 int my_create(char **args) {
     int i;
-    char path[PATHLENGTH];
-    char parpath[PATHLENGTH], filename[NAMELENGTH];
+    char path[PATHLENGTH] = {0};
+    char parpath[PATHLENGTH] = {0}, filename[NAMELENGTH] = {0};
     char *end;
 
     /**< Check argument count. */
@@ -506,16 +523,20 @@ int my_create(char **args) {
             strcpy(parpath, "/");
             strcpy(filename, path + 1);
         } else {
-            strncpy(parpath, path, (unsigned long) (end - path));
+            strncpy(parpath, path, (unsigned long)(end - path));
             strcpy(filename, end + 1);
         }
 
         if (find_fcb(parpath) == NULL) {
-            fprintf(stderr, "create: cannot create \'%s\': Parent folder not exists\n", parpath);
+            fprintf(stderr,
+                    "create: cannot create \'%s\': Parent folder not exists\n",
+                    parpath);
             continue;
         }
         if (find_fcb(path) != NULL) {
-            fprintf(stderr, "create: cannot create \'%s\': Folder or file exists\n", args[i]);
+            fprintf(stderr,
+                    "create: cannot create \'%s\': Folder or file exists\n",
+                    args[i]);
             continue;
         }
 
@@ -532,11 +553,11 @@ int my_create(char **args) {
  * @return Error with -1, else return 0.
  */
 int do_create(const char *parpath, const char *filename) {
-    char fullname[NAMELENGTH], fname[16], exname[8];
+    char fullname[NAMELENGTH] = {0}, fname[16] = {0}, exname[8] = {0};
     char *token;
     ushort first = get_free(1);
     size_t i, flag = 0;
-    fcb *dir = (fcb *) (fs_head + BLOCK_SIZE * find_fcb(parpath)->first);
+    fcb *dir = (fcb *)(fs_head + BLOCK_SIZE * find_fcb(parpath)->first);
 
     /**< Check for free fcb. */
     for (i = 0; i < BLOCK_SIZE / sizeof(fcb); i++, dir++) {
@@ -551,7 +572,7 @@ int do_create(const char *parpath, const char *filename) {
     }
 
     /**< Check for free space. */
-    if (first ==  (ushort)(-1)) {
+    if (first == (ushort)(-1)) {
         fprintf(stderr, "create: No more space\n");
         return -1;
     }
@@ -614,7 +635,8 @@ int my_rm(char **args) {
             if (!strcmp(file->filename, openfile_list[j].open_fcb.filename) &&
                 file->first == openfile_list[j].open_fcb.first) {
                 /**< Folder is open. */
-                fprintf(stderr, "rm: cannot remove %s: File is open\n", args[i]);
+                fprintf(stderr, "rm: cannot remove %s: File is open\n",
+                        args[i]);
                 return 1;
             }
         }
@@ -644,7 +666,7 @@ void do_rm(fcb *file) {
 int my_open(char **args) {
     int i, j;
     fcb *file;
-    char path[PATHLENGTH];
+    char path[PATHLENGTH] = {0};
 
     /**< Check argument count. */
     if (args[1] == NULL) {
@@ -659,7 +681,8 @@ int my_open(char **args) {
                     continue;
                 }
 
-                printf("%2d %8s %-6s %-5d %s\n", i, openfile_list[i].open_fcb.filename,
+                printf("%2d %8s %-6s %-5d %s\n", i,
+                       openfile_list[i].open_fcb.filename,
                        openfile_list[i].open_fcb.exname,
                        openfile_list[i].fcb_state, openfile_list[i].dir);
             }
@@ -674,7 +697,8 @@ int my_open(char **args) {
     for (i = 1; args[i] != NULL; i++) {
         file = find_fcb(args[i]);
         if (file == NULL) {
-            fprintf(stderr, "open: cannot open %s: No such file or folder\n", args[i]);
+            fprintf(stderr, "open: cannot open %s: No such file or folder\n",
+                    args[i]);
             return 1;
         }
 
@@ -687,7 +711,9 @@ int my_open(char **args) {
             if (!strcmp(file->filename, openfile_list[j].open_fcb.filename) &&
                 file->first == openfile_list[j].open_fcb.first) {
                 /**< file is open. */
-                fprintf(stderr, "open: cannot open %s: File or folder is open\n", args[i]);
+                fprintf(stderr,
+                        "open: cannot open %s: File or folder is open\n",
+                        args[i]);
                 continue;
             }
         }
@@ -748,12 +774,12 @@ int my_close(char **args) {
         }
     }
 
-
     /**< Do close. */
     for (i = 1; args[i] != NULL; i++) {
         file = find_fcb(args[i]);
         if (file == NULL) {
-            fprintf(stderr, "close: cannot close %s: No such file or folder\n", args[i]);
+            fprintf(stderr, "close: cannot close %s: No such file or folder\n",
+                    args[i]);
             return 1;
         }
 
@@ -846,9 +872,10 @@ int my_write(char **args) {
                 getchar();
             }
             while (1) {
-                for (; (str[j] = (char)getchar()) != '\n'; j++);
+                for (; (str[j] = (char)getchar()) != '\n'; j++)
+                    ;
                 j++;
-                if ((c = (char) getchar()) == '\n') {
+                if ((c = (char)getchar()) == '\n') {
                     break;
                 } else {
                     str[j] = c;
@@ -875,40 +902,37 @@ int my_write(char **args) {
  * @param wstyle Write style.
  * @return Bytes write
  */
-int do_write(int fd, char *content, size_t len, int wstyle) {
-    //fat1表
+size_t do_write(size_t fd, char *content, size_t len, int wstyle) {
+    // fat1表
 
-    fat *fat1 = (fat *) (fs_head + BLOCK_SIZE);
-    fat *fat2 = (fat *) (fs_head + 3*BLOCK_SIZE);
+    fat *fat1 = (fat *)(fs_head + BLOCK_SIZE);
+    fat *fat2 = (fat *)(fs_head + 3 * BLOCK_SIZE);
 
-    //定义输入字符串数组，初始化
+    // 定义输入字符串数组，初始化
     char text[WRITE_SIZE] = {0};
 
-    int write = openfile_list[fd].count;
+    size_t write = openfile_list[fd].count;
     openfile_list[fd].count = 0;
-    do_read(fd, openfile_list[fd].open_fcb.length, text);  //读取
+    do_read(fd, openfile_list[fd].open_fcb.length, text); // 读取
     openfile_list[fd].count = write;
 
     int i = openfile_list[fd].open_fcb.first;
 
     char input[WRITE_SIZE] = {0};
     strncpy(input, content, len);
-    //文件处理：截断写、覆盖写、追加写
+    // 文件处理：截断写、覆盖写、追加写
     if (wstyle == 'w') {
         memset(text, 0, WRITE_SIZE);
         memcpy(text, input, len);
-//        strncpy(text, input, len);
     } else if (wstyle == 'c') {
         memcpy(text + openfile_list[fd].count, input, len);
-//        strncpy(&text[openfile_list[fd].count], input, len);
     } else if (wstyle == 'a') {
         memcpy(text + openfile_list[fd].count, input, len);
-//        strncpy(&text[openfile_list[fd].open_fcb.length], input, len);
     }
-    //写入文件系统
-    int length = strlen(text); //需要写入的长度
-    int num = length / BLOCK_SIZE + 1;
-    int static_num = num;
+    // 写入文件系统
+    size_t length = strlen(text); // 需要写入的长度
+    size_t num = length / BLOCK_SIZE + 1;
+    size_t static_num = num;
 
     while (num) {
         char buf[BLOCK_SIZE] = {0};
@@ -920,9 +944,9 @@ int do_write(int fd, char *content, size_t len, int wstyle) {
         {
             fat *fat_cur = fat1 + i;
 
-            if (fat_cur->id == END)  //需要申请索引块
+            if (fat_cur->id == END) // 需要申请索引块
             {
-                int next = get_free(1);
+                ushort next = get_free(1);
                 fat_cur->id = next;
                 fat_cur = fat1 + next;
                 fat_cur->id = END;
@@ -930,7 +954,7 @@ int do_write(int fd, char *content, size_t len, int wstyle) {
             i = (fat1 + i)->id;
         }
     }
-    //这时的i是刚写完的最后一个磁盘块，剩下的磁盘块可以free掉
+    // 这时的i是刚写完的最后一个磁盘块，剩下的磁盘块可以free掉
 
     if (fat1[i].id != END) {
         int j = fat1[i].id;
@@ -944,12 +968,10 @@ int do_write(int fd, char *content, size_t len, int wstyle) {
         fat1[i].id = FREE;
     }
 
-    memcpy(fat2, fat1, 2*BLOCK_SIZE);
+    memcpy(fat2, fat1, 2 * BLOCK_SIZE);
     openfile_list[fd].open_fcb.length = length;
     openfile_list[fd].fcb_state = 1;
     return (strlen(input));
-
-
 }
 
 /**
@@ -958,8 +980,9 @@ int do_write(int fd, char *content, size_t len, int wstyle) {
  * @return Bytes read.
  */
 int my_read(char **args) {
-    int i, flag = 0;
-    int length;
+    size_t i;
+    int flag = 0;
+    size_t length;
     int mode = 'a';
     char path[PATHLENGTH];
     char str[WRITE_SIZE];
@@ -1012,9 +1035,9 @@ int my_read(char **args) {
             }
             if (mode == 's') {
                 printf("Please input location: ");
-                scanf("%d", &openfile_list[i].count);
+                scanf("%lu", &openfile_list[i].count);
                 printf("Please input length: ");
-                scanf("%d", &length);
+                scanf("%lu", &length);
                 printf("-----------------------\n");
             }
             do_read(i, length, str);
@@ -1033,50 +1056,55 @@ int my_read(char **args) {
  * @param text Read file into text.
  * @return
  */
-int do_read(int fd, int len, char *text) {
+int do_read(size_t fd, size_t len, char *text) {
     memset(text, '\0', BLOCK_SIZE * 20);
 
-    if (len <= 0) //想要读取0个字符
+    if (len <= 0) // 想要读取0个字符
     {
         return 0;
     }
 
-    fat *fat1 = (fat *) (fs_head + BLOCK_SIZE); //FAT1表
-    int location = 0;//text的写入位置
+    fat *fat1 = (fat *)(fs_head + BLOCK_SIZE); // FAT1表
+    int location = 0;                          // text的写入位置
     size_t length;
-    size_t count = openfile_list[fd].count; //读写指针位置
-    //排除了id出现end的情况
-    if ((openfile_list[fd].open_fcb.length - count) >= len) //可以读取的字符多于想要读取的字符
+    size_t count = openfile_list[fd].count; // 读写指针位置
+    // 排除了id出现end的情况
+    if ((openfile_list[fd].open_fcb.length - count) >=
+        len) // 可以读取的字符多于想要读取的字符
     {
-        length = len;  //想要读取的字符
+        length = len; // 想要读取的字符
     } else {
-        length = openfile_list[fd].open_fcb.length - count; //只能读取这些字符
+        length = openfile_list[fd].open_fcb.length - count; // 只能读取这些字符
     }
-    while (length) //需要读取的字符串个数
+    while (length) // 需要读取的字符串个数
     {
-        char *buf = (char *) malloc(BLOCK_SIZE); //申请空闲缓冲区
-        int count = openfile_list[fd].count; //读写指针位置
-        int logic_block_num = count / BLOCK_SIZE;//逻辑块号（起始为0）
-        int off = count % BLOCK_SIZE;//块内偏移量
-        int physics_block_num = openfile_list[fd].open_fcb.first;//文件起始物理块号（引导块号为0）
+        char *buf = (char *)malloc(BLOCK_SIZE);    // 申请空闲缓冲区
+        size_t cnt = openfile_list[fd].count;      // 读写指针位置
+        size_t logic_block_num = cnt / BLOCK_SIZE; // 逻辑块号（起始为0）
+        size_t off = cnt % BLOCK_SIZE;             // 块内偏移量
+        int physics_block_num =
+            openfile_list[fd].open_fcb.first; // 文件起始物理块号（引导块号为0）
 
-        for (int i = 0; i < logic_block_num; i++)  //物理块号
+        for (size_t i = 0; i < logic_block_num; i++) // 物理块号
         {
-            physics_block_num = (fat1 + physics_block_num)->id; //FAT第一项为0，若为1则physics_block_num-1
+            physics_block_num =
+                (fat1 + physics_block_num)
+                    ->id; // FAT第一项为0，若为1则physics_block_num-1
         }
-        unsigned char *p = fs_head + BLOCK_SIZE * physics_block_num; //该物理块起始地址
+        unsigned char *p =
+            fs_head + BLOCK_SIZE * physics_block_num; // 该物理块起始地址
         memcpy(buf, p, BLOCK_SIZE);
 
         if ((off + length) <= BLOCK_SIZE) {
             memcpy(&text[location], &buf[off], length);
             openfile_list[fd].count = openfile_list[fd].count + length;
-            location += length;  //下一次写的位置
-            length = length - length;  //lenght = 0 将退出循环
+            location += length; // 下一次写的位置
+            length = 0;         // lenght = 0 将退出循环
         } else {
             memcpy(&text[location], &buf[off], BLOCK_SIZE - off);
             openfile_list[fd].count += BLOCK_SIZE - off;
             location += BLOCK_SIZE - off;
-            length = length - BLOCK_SIZE - off; //还剩下的想要读取的字节数
+            length = length - BLOCK_SIZE - off; // 还剩下的想要读取的字节数
         }
     }
 
@@ -1087,8 +1115,8 @@ int do_read(int fd, int len, char *text) {
  * Exit system, save changes.
  * @author
  */
-int my_exit_sys(char** args) {
-    if (args != NULL){
+int my_exit_sys(char **args) {
+    if (args != NULL) {
         return 0;
     }
     int i;
@@ -1113,7 +1141,7 @@ int my_exit_sys(char** args) {
  */
 unsigned short get_free(int count) {
     unsigned char *ptr = fs_head;
-    fat *fat0 = (fat *) (ptr + BLOCK_SIZE);
+    fat *fat0 = (fat *)(ptr + BLOCK_SIZE);
     unsigned short i, j, flag = 0;
     int fat[BLOCK_NUM];
 
@@ -1149,18 +1177,19 @@ unsigned short get_free(int count) {
  *
  */
 int set_free(unsigned short first, unsigned short length, int mode) {
-    fat *flag = (fat *) (fs_head + BLOCK_SIZE);
-    fat *fat0 = (fat *) (fs_head + BLOCK_SIZE);
-    fat *fat1 = (fat *) (fs_head + BLOCK_SIZE * 3);
+    fat *flag = (fat *)(fs_head + BLOCK_SIZE);
+    fat *fat0 = (fat *)(fs_head + BLOCK_SIZE);
+    fat *fat1 = (fat *)(fs_head + BLOCK_SIZE * 3);
     int i;
-    int offset;
+    size_t offset;
 
-    for (i = 0; i < first; i++, fat0++, fat1++);
+    for (i = 0; i < first; i++, fat0++, fat1++)
+        ;
 
     if (mode == 1) {
         /**< Reclaim space. */
         while (fat0->id != END) {
-            offset = fat0->id - (fat0 - flag) / sizeof(fat);
+            offset = fat0->id - (ushort)((size_t)(fat0 - flag) / sizeof(fat));
             fat0->id = FREE;
             fat1->id = FREE;
             fat0 += offset;
@@ -1198,9 +1227,10 @@ int set_free(unsigned short first, unsigned short length, int mode) {
  * @param ffree 1 when file occupied, else 0.
  *
  */
-int set_fcb(fcb *f, const char *filename, const char *exname, unsigned char attr, unsigned short first,
-            unsigned long length, char ffree) {
-    time_t *now = (time_t *) malloc(sizeof(time_t));
+int set_fcb(fcb *f, const char *filename, const char *exname,
+            unsigned char attr, unsigned short first, unsigned long length,
+            char ffree) {
+    time_t *now = (time_t *)malloc(sizeof(time_t));
     struct tm *timeinfo;
     time(now);
     timeinfo = localtime(now);
@@ -1227,14 +1257,14 @@ int set_fcb(fcb *f, const char *filename, const char *exname, unsigned char attr
  */
 unsigned short get_time(struct tm *timeinfo) {
     int hour, min, sec;
-    unsigned short result;
+    int result;
 
     hour = timeinfo->tm_hour;
     min = timeinfo->tm_min;
     sec = timeinfo->tm_sec;
-    result = (hour << 11) + (min << 5) + (sec >> 1);
+    result = (hour << (11)) + (min << 5) + (sec >> 1);
 
-    return result;
+    return (ushort)(result);
 }
 
 /**
@@ -1244,14 +1274,14 @@ unsigned short get_time(struct tm *timeinfo) {
  */
 unsigned short get_date(struct tm *timeinfo) {
     int year, mon, day;
-    unsigned short result;
+    int result;
 
     year = timeinfo->tm_year;
     mon = timeinfo->tm_mon;
     day = timeinfo->tm_mday;
     result = (year << 9) + (mon << 5) + day;
 
-    return result;
+    return (ushort)(result);
 }
 
 /**
@@ -1289,7 +1319,7 @@ char *get_abspath(char *abspath, const char *relpath) {
         return 0;
     }
 
-    char str[PATHLENGTH];
+    char str[PATHLENGTH] = {0};
     char *token, *end;
 
     memset(abspath, '\0', PATHLENGTH);
@@ -1335,7 +1365,7 @@ fcb *find_fcb(const char *path) {
     get_abspath(abspath, path);
     char *token = strtok(abspath, DELIM);
     if (token == NULL) {
-        return (fcb *) (fs_head + BLOCK_SIZE * 5);
+        return (fcb *)(fs_head + BLOCK_SIZE * 5);
     }
     return find_fcb_r(token, 5);
 }
@@ -1349,9 +1379,9 @@ fcb *find_fcb(const char *path) {
 fcb *find_fcb_r(char *token, int first) {
     size_t i, length = BLOCK_SIZE;
     char fullname[NAMELENGTH] = "\0";
-    fcb *root = (fcb *) (BLOCK_SIZE * first + fs_head);
+    fcb *root = (fcb *)(BLOCK_SIZE * first + fs_head);
     fcb *dir;
-    block0 *init_block = (block0 *) fs_head;
+    block0 *init_block = (block0 *)fs_head;
     if (first == init_block->root) {
         length = ROOT_BLOCK_NUM * BLOCK_SIZE;
     }
@@ -1393,10 +1423,10 @@ int get_useropen(void) {
  * @param first Parent folder block num.
  * @param second Current folder block num.
  */
-void init_folder(int first, int second) {
+void init_folder(ushort first, ushort second) {
     size_t i;
-    fcb *par = (fcb *) (fs_head + BLOCK_SIZE * first);
-    fcb *cur = (fcb *) (fs_head + BLOCK_SIZE * second);
+    fcb *par = (fcb *)(fs_head + BLOCK_SIZE * first);
+    fcb *cur = (fcb *)(fs_head + BLOCK_SIZE * second);
 
     set_fcb(cur, ".", "di", 0, second, BLOCK_SIZE, 1);
     cur++;
