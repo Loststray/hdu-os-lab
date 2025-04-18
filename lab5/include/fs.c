@@ -898,55 +898,69 @@ int my_write(char **args) {
 }
 
 /**
- * @param fd File descriptor.
- * @param wstyle Write style.
- * @return Bytes write
+ * @brief 写入文件内容到虚拟磁盘。
+ * 
+ * @param fd 文件描述符。
+ * @param content 要写入的内容。
+ * @param len 写入内容的长度。
+ * @param wstyle 写入模式：'w' 覆盖写，'c' 截断写，'a' 追加写。
+ * @return size_t 实际写入的字节数。
  */
 size_t do_write(size_t fd, char *content, size_t len, int wstyle) {
-    // fat1表
-
+    // 获取 FAT 表
     fat *fat1 = (fat *)(fs_head + BLOCK_SIZE);
     fat *fat2 = (fat *)(fs_head + 3 * BLOCK_SIZE);
 
-    // 定义输入字符串数组，初始化
+    // 定义缓冲区，用于存储文件内容
     char text[WRITE_SIZE] = {0};
 
+    // 保存当前文件的读写指针位置
     size_t write = openfile_list[fd].count;
     openfile_list[fd].count = 0;
-    do_read(fd, openfile_list[fd].open_fcb.length, text); // 读取
+
+    // 读取文件当前内容到缓冲区
+    do_read(fd, openfile_list[fd].open_fcb.length, text);
     openfile_list[fd].count = write;
 
+    // 获取文件的起始块号
     int i = openfile_list[fd].open_fcb.first;
 
+    // 定义输入缓冲区并拷贝要写入的内容
     char input[WRITE_SIZE] = {0};
     strncpy(input, content, len);
-    // 文件处理：截断写、覆盖写、追加写
+
+    // 根据写入模式处理文件内容
     if (wstyle == 'w') {
+        // 覆盖写：清空原内容并写入新内容
         memset(text, 0, WRITE_SIZE);
         memcpy(text, input, len);
     } else if (wstyle == 'c') {
+        // 截断写：从当前指针位置开始写入
         memcpy(text + openfile_list[fd].count, input, len);
     } else if (wstyle == 'a') {
+        // 追加写：从文件末尾开始写入
         memcpy(text + openfile_list[fd].count, input, len);
     }
-    // 写入文件系统
-    size_t length = strlen(text); // 需要写入的长度
+
+    // 计算需要写入的块数
+    size_t length = strlen(text);
     size_t num = length / BLOCK_SIZE + 1;
     size_t static_num = num;
 
+    // 循环写入每个块
     while (num) {
         char buf[BLOCK_SIZE] = {0};
         memcpy(buf, &text[(static_num - num) * BLOCK_SIZE], BLOCK_SIZE);
         unsigned char *p = fs_head + i * BLOCK_SIZE;
         memcpy(p, buf, BLOCK_SIZE);
-        num = num - 1;
-        if (num > 0) // 是否还有下一次循环
-        {
+        num--;
+
+        if (num > 0) {
+            // 如果还有剩余块需要写入，检查 FAT 表是否需要分配新块
             fat *fat_cur = fat1 + i;
 
-            if (fat_cur->id == END) // 需要申请索引块
-            {
-                ushort next = get_free(1);
+            if (fat_cur->id == END) {
+                ushort next = get_free(1); // 分配新块
                 fat_cur->id = next;
                 fat_cur = fat1 + next;
                 fat_cur->id = END;
@@ -954,8 +968,8 @@ size_t do_write(size_t fd, char *content, size_t len, int wstyle) {
             i = (fat1 + i)->id;
         }
     }
-    // 这时的i是刚写完的最后一个磁盘块，剩下的磁盘块可以free掉
 
+    // 释放多余的块
     if (fat1[i].id != END) {
         int j = fat1[i].id;
         fat1[i].id = END;
@@ -968,10 +982,14 @@ size_t do_write(size_t fd, char *content, size_t len, int wstyle) {
         fat1[i].id = FREE;
     }
 
+    // 同步 FAT2 表
     memcpy(fat2, fat1, 2 * BLOCK_SIZE);
+
+    // 更新文件长度和状态
     openfile_list[fd].open_fcb.length = length;
     openfile_list[fd].fcb_state = 1;
-    return (strlen(input));
+
+    return strlen(input);
 }
 
 /**
@@ -1170,11 +1188,12 @@ unsigned short get_free(int count) {
 }
 
 /**
- * Change value of FAT.
- * @param first The starting block number.
- * @param length The blocks count.
- * @param mode 0 to allocate, 1 to reclaim and 2 to format.
- *
+ * @brief 修改 FAT 表中块的分配状态。
+ * 
+ * @param first 起始块号。
+ * @param length 块数量。
+ * @param mode 模式：0 分配，1 回收，2 格式化。
+ * @return int 成功返回 0。
  */
 int set_free(unsigned short first, unsigned short length, int mode) {
     fat *flag = (fat *)(fs_head + BLOCK_SIZE);
@@ -1183,11 +1202,12 @@ int set_free(unsigned short first, unsigned short length, int mode) {
     int i;
     size_t offset;
 
+    // 定位到起始块
     for (i = 0; i < first; i++, fat0++, fat1++)
         ;
 
     if (mode == 1) {
-        /**< Reclaim space. */
+        // 回收空间
         while (fat0->id != END) {
             offset = fat0->id - (ushort)((size_t)(fat0 - flag) / sizeof(fat));
             fat0->id = FREE;
@@ -1198,13 +1218,13 @@ int set_free(unsigned short first, unsigned short length, int mode) {
         fat0->id = FREE;
         fat1->id = FREE;
     } else if (mode == 2) {
-        /**< Format FAT */
+        // 格式化 FAT 表
         for (i = 0; i < BLOCK_NUM; i++, fat0++, fat1++) {
             fat0->id = FREE;
             fat1->id = FREE;
         }
     } else {
-        /**< Allocate consecutive space. */
+        // 分配连续空间
         for (; i < first + length - 1; i++, fat0++, fat1++) {
             fat0->id = first + 1;
             fat1->id = first + 1;
@@ -1477,7 +1497,7 @@ char *trans_date(char *sdate, unsigned short date) {
  */
 char *trans_time(char *stime, unsigned short time) {
     int hour, min, sec;
-    memset(stime, '\0', 16);
+    memset(stime, '\'\0', 16);
 
     hour = time & 0xfc1f;
     min = time & 0x03e0;
