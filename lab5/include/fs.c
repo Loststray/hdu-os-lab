@@ -216,20 +216,24 @@ int my_pwd(char **args) {
 }
 
 /**
- * Create one or many directory once.
- * Provide function to create two or more directory once.
- * If par folder not exists, print error, others will continue.
- * @param args Folder names.
+ * Create one or many directories at once.
+ * Provide functionality to create multiple directories in one command.
+ * If the parent folder does not exist, an error is printed, but the process
+ * continues for other directories.
+ * 
+ * @param args Folder names to create.
  * @return Always 1.
  */
 int my_mkdir(char **args) {
     int i;
-    char path[PATHLENGTH] = {0};
-    char parpath[PATHLENGTH] = {0}, dirname[NAMELENGTH] = {0};
+    char path[PATHLENGTH] = {0};       // 存储完整路径
+    char parpath[PATHLENGTH] = {0};    // 存储父目录路径
+    char dirname[NAMELENGTH] = {0};    // 存储当前目录名
     char *end;
 
     /**< Check argument count. */
     if (args[1] == NULL) {
+        // 如果没有提供目录名，输出错误信息并返回
         fprintf(stderr, "mkdir: missing operand\n");
         return 1;
     }
@@ -237,29 +241,35 @@ int my_mkdir(char **args) {
     /**< Do mkdir. */
     for (i = 1; args[i] != NULL; i++) {
         /**< Split path into parent folder and current child folder. */
-        get_abspath(path, args[i]);
-        end = strrchr(path, '/');
+        get_abspath(path, args[i]); // 将相对路径转换为绝对路径
+        end = strrchr(path, '/');   // 查找路径中最后一个 '/' 的位置
+
         if (end == path) {
+            // 如果路径是根目录
             strcpy(parpath, "/");
             strcpy(dirname, path + 1);
         } else {
+            // 分割路径为父目录路径和当前目录名
             strncpy(parpath, path, (size_t)(end - path));
             strcpy(dirname, end + 1);
         }
 
         if (find_fcb(parpath) == NULL) {
+            // 如果父目录不存在，输出错误信息并跳过
             fprintf(stderr,
                     "create: cannot create \'%s\': Parent folder not exists\n",
                     parpath);
             continue;
         }
         if (find_fcb(path) != NULL) {
+            // 如果目录或文件已存在，输出错误信息并跳过
             fprintf(stderr,
                     "create: cannot create \'%s\': Folder or file exists\n",
                     args[i]);
             continue;
         }
 
+        // 调用 do_mkdir 创建目录
         do_mkdir(parpath, dirname);
     }
 
@@ -1497,7 +1507,7 @@ char *trans_date(char *sdate, unsigned short date) {
  */
 char *trans_time(char *stime, unsigned short time) {
     int hour, min, sec;
-    memset(stime, '\'\0', 16);
+    memset(stime, 0, 16);
 
     hour = time & 0xfc1f;
     min = time & 0x03e0;
